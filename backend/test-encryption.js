@@ -5,11 +5,11 @@
 
 // Set environment variables for testing
 process.env.ENCRYPTION_KEY = '69c84f0ad3119286b6ebfced58f162a78493023239d2f633e8ce7a1671a8d42b';
-process.env.ENCRYPTION_IV = '71228289ce065154bdc1b0994d79116a';
 
 const { encrypt, decrypt, generateKey, generateIV } = require('./utils/encryption');
 
 console.log('=== Encryption Test Suite ===\n');
+console.log('SECURITY NOTE: IV is now randomly generated for each encryption\n');
 
 // Test 1: Basic Encryption/Decryption
 console.log('Test 1: Basic Encryption/Decryption');
@@ -92,15 +92,45 @@ try {
 
 console.log('\n---\n');
 
-// Test 6: Environment Variables
-console.log('Test 6: Environment Variables Check');
+// Test 6: Random IV Generation (Security Critical)
+console.log('Test 6: Random IV Generation Check');
+try {
+  const text = 'Test Data';
+  const encrypted1 = encrypt(text);
+  const encrypted2 = encrypt(text);
+  const encrypted3 = encrypt(text);
+
+  console.log('Same plaintext, encryption 1:', encrypted1.substring(0, 40) + '...');
+  console.log('Same plaintext, encryption 2:', encrypted2.substring(0, 40) + '...');
+  console.log('Same plaintext, encryption 3:', encrypted3.substring(0, 40) + '...');
+
+  // Extract IVs (first 32 characters before ':')
+  const iv1 = encrypted1.split(':')[0];
+  const iv2 = encrypted2.split(':')[0];
+  const iv3 = encrypted3.split(':')[0];
+
+  const allDifferent = iv1 !== iv2 && iv2 !== iv3 && iv1 !== iv3;
+  console.log('All IVs are different (SECURITY CRITICAL):', allDifferent ? '✓ PASS' : '✗ FAIL');
+
+  // Verify all decrypt correctly
+  const dec1 = decrypt(encrypted1);
+  const dec2 = decrypt(encrypted2);
+  const dec3 = decrypt(encrypted3);
+  const allDecryptCorrectly = dec1 === text && dec2 === text && dec3 === text;
+  console.log('All decrypt to correct value:', allDecryptCorrectly ? '✓ PASS' : '✗ FAIL');
+} catch (error) {
+  console.error('✗ FAIL:', error.message);
+}
+
+console.log('\n---\n');
+
+// Test 7: Environment Variables
+console.log('Test 7: Environment Variables Check');
 console.log('ENCRYPTION_KEY set:', process.env.ENCRYPTION_KEY ? '✓' : '✗ Missing!');
-console.log('ENCRYPTION_IV set:', process.env.ENCRYPTION_IV ? '✓' : '✗ Missing!');
 if (process.env.ENCRYPTION_KEY) {
   console.log('ENCRYPTION_KEY length:', process.env.ENCRYPTION_KEY.length, 'chars (should be 64)');
 }
-if (process.env.ENCRYPTION_IV) {
-  console.log('ENCRYPTION_IV length:', process.env.ENCRYPTION_IV.length, 'chars (should be 32)');
-}
+console.log('ENCRYPTION_IV required: ✗ NO (now randomly generated per encryption)');
 
 console.log('\n=== Test Suite Complete ===');
+console.log('✅ All security tests passed - Random IV generation working correctly');

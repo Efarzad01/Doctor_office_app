@@ -10,6 +10,9 @@ const crypto = require('crypto');
  * @param {string} text - The plain text to encrypt
  * @returns {string} - The encrypted text in format: iv:encryptedData
  * @throws {Error} - If encryption fails or environment variables are missing
+ *
+ * SECURITY: Uses randomly generated IV for each encryption operation
+ * to prevent pattern detection and ensure semantic security
  */
 function encrypt(text) {
   try {
@@ -19,8 +22,8 @@ function encrypt(text) {
     }
 
     // Validate environment variables
-    if (!process.env.ENCRYPTION_KEY || !process.env.ENCRYPTION_IV) {
-      throw new Error('ENCRYPTION_KEY and ENCRYPTION_IV must be set in environment variables');
+    if (!process.env.ENCRYPTION_KEY) {
+      throw new Error('ENCRYPTION_KEY must be set in environment variables');
     }
 
     // Convert text to string if it isn't already
@@ -29,16 +32,14 @@ function encrypt(text) {
     // Create encryption key from environment variable (must be 32 bytes for AES-256)
     const key = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
-    // Create initialization vector from environment variable (must be 16 bytes for AES)
-    const iv = Buffer.from(process.env.ENCRYPTION_IV, 'hex');
-
-    // Validate key and IV lengths
+    // Validate key length
     if (key.length !== 32) {
       throw new Error('ENCRYPTION_KEY must be 32 bytes (64 hex characters)');
     }
-    if (iv.length !== 16) {
-      throw new Error('ENCRYPTION_IV must be 16 bytes (32 hex characters)');
-    }
+
+    // SECURITY FIX: Generate a random IV for EACH encryption operation
+    // CRITICAL: Never reuse IVs with the same key - this prevents pattern detection
+    const iv = crypto.randomBytes(16);
 
     // Create cipher using AES-256-CBC algorithm
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
@@ -48,7 +49,7 @@ function encrypt(text) {
     encrypted += cipher.final('hex');
 
     // Return encrypted data with IV prepended (format: iv:encryptedData)
-    // This allows for key rotation in the future
+    // Each encryption will have a different IV, ensuring semantic security
     return `${iv.toString('hex')}:${encrypted}`;
   } catch (error) {
     console.error('Encryption error:', error.message);
